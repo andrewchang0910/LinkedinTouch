@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinkedinTouch Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #0a66c2;
+      color: #fff;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 600; }
+    header .subtitle { font-size: 0.8rem; opacity: 0.8; margin-left: auto; }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+
+    /* ── Stats cards ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 16px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .stat-card .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .05em; color: #666; }
+    .stat-card .value { font-size: 2rem; font-weight: 700; margin-top: 4px; }
+    .stat-card.total  .value { color: #0a66c2; }
+    .stat-card.messaged .value { color: #057642; }
+    .stat-card.new    .value { color: #b8860b; }
+    .stat-card.failed .value { color: #cc1016; }
+    .stat-card.skipped .value { color: #888; }
+
+    /* ── Daily cap bar ── */
+    .daily-section {
+      background: #fff;
+      border-radius: 10px;
+      padding: 16px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      margin-bottom: 24px;
+    }
+    .daily-section h2 { font-size: 0.85rem; font-weight: 600; margin-bottom: 12px; color: #444; text-transform: uppercase; letter-spacing: .05em; }
+    .bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .bar-row .bar-label { width: 100px; font-size: 0.82rem; color: #555; }
+    .bar-track { flex: 1; background: #e9ecef; border-radius: 6px; height: 14px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 6px; transition: width .4s; }
+    .bar-fill.scrape { background: #0a66c2; }
+    .bar-fill.message { background: #057642; }
+    .bar-row .bar-numbers { font-size: 0.78rem; color: #666; width: 80px; text-align: right; }
+
+    /* ── Filter tabs ── */
+    .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+    .tab {
+      padding: 7px 18px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: #e0e7f0;
+      color: #444;
+      transition: background .15s, color .15s;
+    }
+    .tab.active { background: #0a66c2; color: #fff; }
+    .tab:hover:not(.active) { background: #c8d8e8; }
+
+    /* ── Prospects table ── */
+    .table-wrap {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      background: #f8f9fa;
+      padding: 11px 14px;
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #666;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    tbody tr {
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: background .1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f5f8ff; }
+    tbody td { padding: 10px 14px; font-size: 0.85rem; vertical-align: middle; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+    .badge-messaged { background: #d4edda; color: #155724; }
+    .badge-new      { background: #fff3cd; color: #856404; }
+    .badge-failed   { background: #f8d7da; color: #721c24; }
+    .badge-skipped  { background: #e2e3e5; color: #383d41; }
+
+    .msg-preview { color: #555; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sent-time { color: #888; font-size: 0.78rem; white-space: nowrap; }
+
+    /* ── Expanded row ── */
+    .expand-row td {
+      background: #f0f6ff;
+      padding: 12px 20px 16px;
+      font-size: 0.83rem;
+    }
+    .expand-row .full-msg {
+      white-space: pre-wrap;
+      line-height: 1.6;
+      color: #333;
+      background: #fff;
+      border: 1px solid #d0dce8;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-top: 6px;
+    }
+    .expand-row .profile-link { font-size: 0.78rem; color: #0a66c2; word-break: break-all; }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 16px;
+      color: #aaa;
+      font-size: 0.9rem;
+    }
+
+    .refresh-note { font-size: 0.75rem; color: #aaa; margin-top: 12px; text-align: right; }
+
+    /* ── Controls panel ── */
+    .controls-panel {
+      background: #fff;
+      border-radius: 10px;
+      padding: 16px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      margin-bottom: 24px;
+    }
+    .controls-panel h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .ctrl-btn {
+      padding: 7px 16px;
+      border-radius: 6px;
+      border: 1px solid #0a66c2;
+      background: #fff;
+      color: #0a66c2;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background .15s, color .15s;
+    }
+    .ctrl-btn:hover:not(:disabled) { background: #0a66c2; color: #fff; }
+    .ctrl-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .ctrl-btn.running { background: #0a66c2; color: #fff; }
+    .limit-input {
+      width: 56px;
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 0.85rem;
+      text-align: center;
+    }
+    .limit-input:disabled { opacity: 0.45; }
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .terminal-box {
+      background: #1a1a2e;
+      color: #d4d4d4;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.78rem;
+      line-height: 1.55;
+      border-radius: 8px;
+      padding: 12px 14px;
+      min-height: 80px;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .terminal-box .term-prompt { color: #6fcf97; }
+    .terminal-box .term-error  { color: #f28b82; }
+  </style>
+</head>
+<body>
+  <header>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+    <h1>LinkedinTouch</h1>
+    <span class="subtitle" id="last-updated">Loading…</span>
+  </header>
+
+  <div class="container">
+    <!-- Controls -->
+    <div class="controls-panel">
+      <h2>Controls</h2>
+      <div class="controls-row">
+        <button class="ctrl-btn" id="btn-scrape" onclick="runCmd('scrape')">Scrape</button>
+        <span style="font-size:0.82rem;color:#666;">limit:</span>
+        <input class="limit-input" id="scrape-limit" type="number" value="20" min="1" max="200" />
+        <button class="ctrl-btn" id="btn-generate-mock" onclick="runCmd('generate_mock')">Generate (Mock)</button>
+        <button class="ctrl-btn" id="btn-generate" onclick="runCmd('generate')">Generate</button>
+        <button class="ctrl-btn" id="btn-send-dry" onclick="runCmd('send_dry')">Send (Dry Run)</button>
+        <button class="ctrl-btn" id="btn-send" onclick="runCmd('send')">Send</button>
+      </div>
+      <div class="terminal-box" id="terminal-box"><span style="color:#555">Click a button to run a command…</span></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card total"><div class="label">Total</div><div class="value" id="s-total">—</div></div>
+      <div class="stat-card messaged"><div class="label">Messaged</div><div class="value" id="s-messaged">—</div></div>
+      <div class="stat-card new"><div class="label">Pending</div><div class="value" id="s-new">—</div></div>
+      <div class="stat-card failed"><div class="label">Failed</div><div class="value" id="s-failed">—</div></div>
+      <div class="stat-card skipped"><div class="label">Skipped</div><div class="value" id="s-skipped">—</div></div>
+    </div>
+
+    <!-- Daily cap -->
+    <div class="daily-section">
+      <h2>Today's activity</h2>
+      <div class="bar-row">
+        <span class="bar-label">Scraped</span>
+        <div class="bar-track"><div class="bar-fill scrape" id="bar-scrape" style="width:0%"></div></div>
+        <span class="bar-numbers" id="num-scrape">0 / 0</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Messaged</span>
+        <div class="bar-track"><div class="bar-fill message" id="bar-message" style="width:0%"></div></div>
+        <span class="bar-numbers" id="num-message">0 / 0</span>
+      </div>
+    </div>
+
+    <!-- Filter tabs -->
+    <div class="tabs">
+      <button class="tab active" data-filter="all">All</button>
+      <button class="tab" data-filter="new">New</button>
+      <button class="tab" data-filter="messaged">Messaged</button>
+      <button class="tab" data-filter="failed">Failed</button>
+      <button class="tab" data-filter="skipped">Skipped</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Headline</th>
+            <th>Company</th>
+            <th>Location</th>
+            <th>Status</th>
+            <th>Message preview</th>
+            <th>Sent</th>
+          </tr>
+        </thead>
+        <tbody id="prospects-body">
+          <tr><td colspan="7" class="empty-state">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="refresh-note" id="refresh-note"></p>
+  </div>
+
+  <script>
+    let allProspects = [];
+    let activeFilter = 'all';
+    let expandedId = null;
+
+    function statusBadge(s) {
+      return `<span class="badge badge-${s}">${s}</span>`;
+    }
+
+    function fmtDate(d) {
+      if (!d) return '';
+      const dt = new Date(d.replace(' ', 'T') + 'Z');
+      return dt.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderTable() {
+      const filter = activeFilter;
+      const rows = allProspects.filter(p => filter === 'all' || p.status === filter);
+      const tbody = document.getElementById('prospects-body');
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No prospects found for filter "${filter}".</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(p => {
+        const preview = p.message_text ? p.message_text.slice(0, 80) + (p.message_text.length > 80 ? '…' : '') : '—';
+        return `
+          <tr data-id="${p.id}" onclick="toggleExpand(${p.id})">
+            <td><strong>${escHtml(p.name || '—')}</strong></td>
+            <td>${escHtml(p.headline || '—')}</td>
+            <td>${escHtml(p.company || '—')}</td>
+            <td>${escHtml(p.location || '—')}</td>
+            <td>${statusBadge(p.status)}</td>
+            <td class="msg-preview">${escHtml(preview)}</td>
+            <td class="sent-time">${fmtDate(p.sent_at)}</td>
+          </tr>
+          <tr class="expand-row" id="expand-${p.id}" style="display:none">
+            <td colspan="7">
+              <div>
+                <a class="profile-link" href="${escHtml(p.profile_url)}" target="_blank" rel="noopener">${escHtml(p.profile_url)}</a>
+              </div>
+              ${p.message_text
+                ? `<div class="full-msg">${escHtml(p.message_text)}</div>`
+                : '<div style="margin-top:8px;color:#aaa;font-style:italic">No message generated yet.</div>'}
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    function toggleExpand(id) {
+      const row = document.getElementById(`expand-${id}`);
+      if (!row) return;
+      if (expandedId === id) {
+        row.style.display = 'none';
+        expandedId = null;
+      } else {
+        if (expandedId !== null) {
+          const prev = document.getElementById(`expand-${expandedId}`);
+          if (prev) prev.style.display = 'none';
+        }
+        row.style.display = 'table-row';
+        expandedId = id;
+      }
+    }
+
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    async function fetchData() {
+      try {
+        const res = await fetch('/api/data');
+        const data = await res.json();
+
+        // Stats
+        document.getElementById('s-total').textContent    = data.stats.total;
+        document.getElementById('s-messaged').textContent = data.stats.messaged;
+        document.getElementById('s-new').textContent      = data.stats.new;
+        document.getElementById('s-failed').textContent   = data.stats.failed;
+        document.getElementById('s-skipped').textContent  = data.stats.skipped;
+
+        // Daily bars
+        const sCap = data.daily.scrape_cap || 1;
+        const mCap = data.daily.message_cap || 1;
+        document.getElementById('bar-scrape').style.width  = Math.min(100, data.daily.scraped  / sCap * 100) + '%';
+        document.getElementById('bar-message').style.width = Math.min(100, data.daily.messaged / mCap * 100) + '%';
+        document.getElementById('num-scrape').textContent  = `${data.daily.scraped} / ${sCap}`;
+        document.getElementById('num-message').textContent = `${data.daily.messaged} / ${mCap}`;
+
+        allProspects = data.prospects;
+        renderTable();
+
+        const now = new Date();
+        document.getElementById('last-updated').textContent =
+          'Updated ' + now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        document.getElementById('refresh-note').textContent = 'Auto-refreshes every 30 seconds';
+      } catch (e) {
+        console.error('Failed to load data', e);
+        document.getElementById('last-updated').textContent = 'Error loading data';
+      }
+    }
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+        activeFilter = btn.dataset.filter;
+        expandedId = null;
+        renderTable();
+      });
+    });
+
+    fetchData();
+    setInterval(fetchData, 30000);
+
+    // ── Controls ──────────────────────────────────────────────
+    const ALL_BTNS = ['btn-scrape','btn-generate-mock','btn-generate','btn-send-dry','btn-send'];
+
+    function setButtonsDisabled(disabled) {
+      ALL_BTNS.forEach(id => {
+        document.getElementById(id).disabled = disabled;
+      });
+      document.getElementById('scrape-limit').disabled = disabled;
+    }
+
+    function termWrite(html) {
+      document.getElementById('terminal-box').innerHTML = html;
+    }
+
+    function termAppend(text, cls) {
+      const box = document.getElementById('terminal-box');
+      const span = document.createElement('span');
+      if (cls) span.className = cls;
+      span.textContent = text;
+      box.appendChild(span);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function runCmd(command) {
+      const limit = parseInt(document.getElementById('scrape-limit').value, 10) || 20;
+      const args = command === 'scrape' ? { limit } : {};
+
+      const cmdLabels = {
+        scrape: `python main.py scrape --limit ${limit}`,
+        generate_mock: 'python main.py generate --mock',
+        generate: 'python main.py generate',
+        send_dry: 'python main.py send --dry-run',
+        send: 'python main.py send',
+      };
+
+      termWrite('');
+      termAppend('$ ' + cmdLabels[command] + '\n', 'term-prompt');
+
+      // Mark active button with spinner
+      const btnId = {
+        scrape: 'btn-scrape', generate_mock: 'btn-generate-mock',
+        generate: 'btn-generate', send_dry: 'btn-send-dry', send: 'btn-send',
+      }[command];
+      const activeBtn = document.getElementById(btnId);
+      const origHTML = activeBtn.innerHTML;
+      activeBtn.innerHTML = `<span class="spinner"></span> Running…`;
+      activeBtn.classList.add('running');
+      setButtonsDisabled(true);
+
+      let jobId;
+      try {
+        const res = await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command, args }),
+        });
+        const data = await res.json();
+        if (!res.ok) { throw new Error(data.error || 'Failed to start job'); }
+        jobId = data.job_id;
+      } catch (err) {
+        termAppend('\nError: ' + err.message + '\n', 'term-error');
+        activeBtn.innerHTML = origHTML;
+        activeBtn.classList.remove('running');
+        setButtonsDisabled(false);
+        return;
+      }
+
+      // Poll until done
+      const poll = setInterval(async () => {
+        try {
+          const res = await fetch('/api/job/' + jobId);
+          const job = await res.json();
+          if (job.status !== 'running') {
+            clearInterval(poll);
+            const box = document.getElementById('terminal-box');
+            // Replace content with prompt + output
+            box.innerHTML = '';
+            termAppend('$ ' + cmdLabels[command] + '\n', 'term-prompt');
+            termAppend(job.output || '', job.status === 'error' ? 'term-error' : '');
+            termAppend('\n[' + job.status.toUpperCase() + ']', job.status === 'error' ? 'term-error' : 'term-prompt');
+            box.scrollTop = box.scrollHeight;
+
+            activeBtn.innerHTML = origHTML;
+            activeBtn.classList.remove('running');
+            setButtonsDisabled(false);
+            fetchData(); // refresh stats + table
+          }
+        } catch (err) {
+          clearInterval(poll);
+          termAppend('\nPoll error: ' + err.message, 'term-error');
+          activeBtn.innerHTML = origHTML;
+          activeBtn.classList.remove('running');
+          setButtonsDisabled(false);
+        }
+      }, 2000);
+    }
+  </script>
+</body>
+</html>
