@@ -50,6 +50,14 @@ def upsert_prospect(
     return row["id"]
 
 
+def get_existing_profile_urls() -> set[str]:
+    """Return the set of all profile URLs already in the database."""
+    conn = _conn()
+    rows = conn.execute("SELECT profile_url FROM prospects").fetchall()
+    conn.close()
+    return {row["profile_url"] for row in rows}
+
+
 def get_pending_prospects() -> list[sqlite3.Row]:
     """Return all prospects with status='new' that have no pending/sent message."""
     conn = _conn()

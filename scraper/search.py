@@ -7,6 +7,7 @@ from playwright.async_api import Page
 
 import config
 from scraper.rate_limiter import page_delay, check_scrape_cap
+import db.repo as repo
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ async def collect_profile_urls(
 ) -> list[str]:
     """Iterate search result pages and collect up to `limit` unique profile URLs."""
     campaign = config.CAMPAIGN
-    seen: set[str] = set()
+    seen: set[str] = repo.get_existing_profile_urls()  # skip already-scraped profiles
     urls: list[str] = []
 
     keywords = campaign.get("job_titles", [""])
