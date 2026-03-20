@@ -2,6 +2,9 @@
 .env
 session.json
 
+# Campaign override (written by web dashboard at runtime)
+campaign.json
+
 # Database
 *.db
 *.sqlite3

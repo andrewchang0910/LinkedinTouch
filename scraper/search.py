@@ -58,7 +58,11 @@ async def collect_profile_urls(
     seen: set[str] = repo.get_existing_profile_urls()  # skip already-scraped profiles
     urls: list[str] = []
 
-    keywords = campaign.get("job_titles", [""])
+    industry_kws = campaign.get("industry_keywords", [])
+    if industry_kws:
+        keywords = [f"{t} {i}" for t in campaign.get("job_titles", []) for i in industry_kws]
+    else:
+        keywords = campaign.get("job_titles", [""])
 
     for keyword in keywords:
         if len(urls) >= limit:

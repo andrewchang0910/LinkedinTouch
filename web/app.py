@@ -10,9 +10,11 @@ import uuid
 # Allow imports from project root regardless of CWD
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import json as _json
+
 from flask import Flask, jsonify, render_template, request
 import config
-from db.repo import get_stats, get_daily_counts
+from db.repo import get_stats, get_daily_counts, set_prospect_status
 from db.schema import init_db
 
 app = Flask(__name__)
@@ -169,6 +171,81 @@ def api_data():
             },
         }
     )
+
+
+@app.route("/api/campaign/suggest", methods=["POST"])
+def api_campaign_suggest():
+    body = request.get_json(force=True) or {}
+    description = (body.get("description") or "").strip()
+    if not description:
+        return jsonify({"error": "description is required"}), 400
+    if not config.OPENAI_API_KEY:
+        return jsonify({"error": "OPENAI_API_KEY not configured"}), 500
+
+    try:
+        import openai
+        openai.api_key = config.OPENAI_API_KEY
+        response = openai.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a B2B sales targeting expert. "
+                        "Given a campaign description, return ONLY valid JSON with two keys: "
+                        '"job_titles" (array of 8-12 job title strings) and '
+                        '"industry_keywords" (array of 4-8 industry keyword strings). '
+                        "No explanation, no markdown, just raw JSON."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"Campaign target description: {description}",
+                },
+            ],
+            max_tokens=400,
+            temperature=0.5,
+            response_format={"type": "json_object"},
+        )
+        result = _json.loads(response.choices[0].message.content)
+        return jsonify({
+            "job_titles": result.get("job_titles", []),
+            "industry_keywords": result.get("industry_keywords", []),
+        })
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+_VALID_STATUSES = {"new", "messaged", "skipped", "failed"}
+
+
+@app.route("/api/prospect/<int:pid>/status", methods=["PATCH"])
+def api_prospect_status(pid: int):
+    body = request.get_json(force=True) or {}
+    status = body.get("status", "")
+    if status not in _VALID_STATUSES:
+        return jsonify({"error": f"invalid status '{status}'"}), 400
+    set_prospect_status(pid, status)
+    return jsonify({"ok": True})
+
+
+_CAMPAIGN_OVERRIDE = os.path.join(_PROJECT_ROOT, "campaign.json")
+_CAMPAIGN_ALLOWED_KEYS = {"job_titles", "industry_keywords", "company_sizes", "regions"}
+
+
+@app.route("/api/campaign", methods=["GET"])
+def api_campaign_get():
+    return jsonify(config.CAMPAIGN)
+
+
+@app.route("/api/campaign", methods=["POST"])
+def api_campaign_post():
+    body = request.get_json(force=True) or {}
+    campaign = {k: v for k, v in body.items() if k in _CAMPAIGN_ALLOWED_KEYS}
+    with open(_CAMPAIGN_OVERRIDE, "w", encoding="utf-8") as f:
+        _json.dump(campaign, f, indent=2, ensure_ascii=False)
+    config.CAMPAIGN.update(campaign)
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":

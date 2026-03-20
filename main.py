@@ -104,15 +104,16 @@ def _mock_message(profile: dict) -> str:
 
     if is_tw_hk or has_chinese:
         return (
-            f"{name} 您好，看到您在 {company} 擔任 {headline}，"
-            f"我們協助 HR 團隊自動化招募流程，效率提升 30%。"
-            f"請問您目前在人才招募上有遇到哪些瓶頸嗎？"
+            f"{name} 您好，看到您在 {company} 負責 {headline}，"
+            f"ChainThink 專注加密專案的用戶增長與媒體廣告投放，"
+            f"目前有協助多個 Web3 項目做冷啟動。"
+            f"請問您目前在用戶增長上最大的挑戰是什麼？"
         )[:300]
     else:
         return (
-            f"Hi {name}, I noticed you're leading talent work at {company}. "
-            f"We help HR teams cut sourcing time by 30% — "
-            f"what's your biggest recruiting bottleneck right now?"
+            f"Hi {name}, saw you're leading {headline} at {company}. "
+            f"ChainThink helps Web3 projects grow their user base through targeted media and growth campaigns. "
+            f"What's your biggest acquisition challenge right now?"
         )[:300]
 
 

@@ -227,6 +227,65 @@
     }
     .terminal-box .term-prompt { color: #6fcf97; }
     .terminal-box .term-error  { color: #f28b82; }
+
+    /* ── Campaign config panel ── */
+    .campaign-panel {
+      background: #fff;
+      border-radius: 10px;
+      padding: 16px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      margin-bottom: 24px;
+    }
+    .campaign-panel summary {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      cursor: pointer;
+      user-select: none;
+    }
+    .campaign-fields { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .campaign-fields label { font-size: 0.78rem; color: #555; font-weight: 600; display: block; margin-bottom: 4px; }
+    .campaign-fields textarea {
+      width: 100%; height: 110px; font-size: 0.82rem; border: 1px solid #ccc;
+      border-radius: 6px; padding: 7px 9px; resize: vertical; font-family: inherit;
+    }
+    .campaign-fields textarea:focus { outline: none; border-color: #0a66c2; }
+    .campaign-save-row { margin-top: 12px; display: flex; align-items: center; gap: 10px; }
+    .campaign-note { font-size: 0.75rem; color: #888; }
+    .save-ok { color: #057642; font-size: 0.82rem; font-weight: 600; display: none; }
+    .ai-row { display: flex; gap: 8px; align-items: center; margin-top: 14px; margin-bottom: 2px; }
+    .ai-input {
+      flex: 1; padding: 7px 10px; border-radius: 6px; border: 1px solid #ccc;
+      font-size: 0.85rem; font-family: inherit;
+    }
+    .ai-input:focus { outline: none; border-color: #0a66c2; }
+    .ai-btn {
+      padding: 7px 14px; border-radius: 6px; border: none;
+      background: linear-gradient(135deg, #7c3aed, #0a66c2);
+      color: #fff; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Status change in expanded row ── */
+    .status-controls { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .status-controls span { font-size: 0.78rem; color: #666; font-weight: 600; }
+    .status-btn {
+      padding: 4px 12px; border-radius: 12px; border: 1px solid #ccc;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer; background: #fff;
+      transition: background .15s, color .15s;
+    }
+    .status-btn:hover { opacity: 0.8; }
+    .status-btn[data-s="messaged"] { border-color: #057642; color: #057642; }
+    .status-btn[data-s="messaged"]:hover { background: #057642; color: #fff; }
+    .status-btn[data-s="skipped"]  { border-color: #888; color: #666; }
+    .status-btn[data-s="skipped"]:hover  { background: #888; color: #fff; }
+    .status-btn[data-s="new"]      { border-color: #b8860b; color: #b8860b; }
+    .status-btn[data-s="new"]:hover      { background: #b8860b; color: #fff; }
+    .status-btn[data-s="failed"]   { border-color: #cc1016; color: #cc1016; }
+    .status-btn[data-s="failed"]:hover   { background: #cc1016; color: #fff; }
   </style>
 </head>
 <body>
@@ -250,6 +309,35 @@
         <button class="ctrl-btn" id="btn-send" onclick="runCmd('send')">Send</button>
       </div>
       <div class="terminal-box" id="terminal-box"><span style="color:#555">Click a button to run a command…</span></div>
+    </div>
+
+    <!-- Campaign Config -->
+    <div class="campaign-panel">
+      <details>
+        <summary>Campaign Config</summary>
+        <div class="ai-row">
+          <input class="ai-input" id="ai-description" type="text"
+            placeholder="Describe your target audience, e.g. "crypto/Web3 growth and marketing people"" />
+          <button class="ai-btn" id="btn-ai-create" onclick="aiCreateCampaign()">
+            ✦ AI Create
+          </button>
+        </div>
+        <div class="campaign-fields">
+          <div>
+            <label>Job Titles (one per line)</label>
+            <textarea id="cfg-job-titles"></textarea>
+          </div>
+          <div>
+            <label>Industry Keywords (one per line)</label>
+            <textarea id="cfg-industry-kws"></textarea>
+          </div>
+        </div>
+        <div class="campaign-save-row">
+          <button class="ctrl-btn" id="btn-save-campaign" onclick="saveCampaign()">Save Campaign</button>
+          <span class="campaign-note">Changes apply to the next scrape run.</span>
+          <span class="save-ok" id="save-ok">✓ Saved</span>
+        </div>
+      </details>
     </div>
 
     <!-- Stats -->
@@ -353,6 +441,13 @@
               ${p.message_text
                 ? `<div class="full-msg">${escHtml(p.message_text)}</div>`
                 : '<div style="margin-top:8px;color:#aaa;font-style:italic">No message generated yet.</div>'}
+              <div class="status-controls">
+                <span>Mark as:</span>
+                <button class="status-btn" data-s="messaged" onclick="setStatus(event,${p.id},'messaged')">Messaged</button>
+                <button class="status-btn" data-s="skipped"  onclick="setStatus(event,${p.id},'skipped')">Skip</button>
+                <button class="status-btn" data-s="new"      onclick="setStatus(event,${p.id},'new')">Reset to New</button>
+                <button class="status-btn" data-s="failed"   onclick="setStatus(event,${p.id},'failed')">Failed</button>
+              </div>
             </td>
           </tr>`;
       }).join('');
@@ -428,6 +523,85 @@
 
     fetchData();
     setInterval(fetchData, 30000);
+    fetchCampaign();
+
+    // ── Status change ─────────────────────────────────────────
+    async function setStatus(evt, id, status) {
+      evt.stopPropagation(); // don't collapse the row
+      try {
+        const res = await fetch(`/api/prospect/${id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
+        });
+        if (!res.ok) throw new Error('Failed');
+        await fetchData(); // refresh table
+      } catch (e) {
+        alert('Error updating status: ' + e.message);
+      }
+    }
+
+    // ── Campaign config ────────────────────────────────────────
+    async function fetchCampaign() {
+      try {
+        const res = await fetch('/api/campaign');
+        const data = await res.json();
+        document.getElementById('cfg-job-titles').value = (data.job_titles || []).join('\n');
+        document.getElementById('cfg-industry-kws').value = (data.industry_keywords || []).join('\n');
+      } catch (e) { console.error('Failed to load campaign', e); }
+    }
+
+    async function aiCreateCampaign() {
+      const description = document.getElementById('ai-description').value.trim();
+      if (!description) { alert('Please enter a target audience description first.'); return; }
+
+      const btn = document.getElementById('btn-ai-create');
+      const origHTML = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner"></span> Generating…`;
+
+      try {
+        const res = await fetch('/api/campaign/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ description }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+        document.getElementById('cfg-job-titles').value = (data.job_titles || []).join('\n');
+        document.getElementById('cfg-industry-kws').value = (data.industry_keywords || []).join('\n');
+      } catch (e) {
+        alert('AI error: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHTML;
+      }
+    }
+
+    async function saveCampaign() {
+      const jobTitles = document.getElementById('cfg-job-titles').value
+        .split('\n').map(s => s.trim()).filter(Boolean);
+      const industryKws = document.getElementById('cfg-industry-kws').value
+        .split('\n').map(s => s.trim()).filter(Boolean);
+
+      const btn = document.getElementById('btn-save-campaign');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/campaign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ job_titles: jobTitles, industry_keywords: industryKws }),
+        });
+        if (!res.ok) throw new Error('Failed');
+        const ok = document.getElementById('save-ok');
+        ok.style.display = 'inline';
+        setTimeout(() => { ok.style.display = 'none'; }, 2500);
+      } catch (e) {
+        alert('Error saving campaign: ' + e.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
 
     // ── Controls ──────────────────────────────────────────────
     const ALL_BTNS = ['btn-scrape','btn-generate-mock','btn-generate','btn-send-dry','btn-send'];
