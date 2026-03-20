@@ -10,6 +10,8 @@ LINKEDIN_PASSWORD = os.getenv("LINKEDIN_PASSWORD", "")
 
 # OpenAI
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "http://api.91codex.com/dashboard/api/proxy/v1")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.4")
 
 # Campaign filters — edit these for each campaign
 CAMPAIGN = {

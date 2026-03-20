@@ -8,20 +8,23 @@ from generator.prompt import SYSTEM_PROMPT, build_user_prompt
 
 logger = logging.getLogger(__name__)
 
-openai.api_key = config.OPENAI_API_KEY
+_client = openai.OpenAI(
+    api_key=config.OPENAI_API_KEY,
+    base_url=config.OPENAI_BASE_URL,
+)
 
 
 def generate_message(profile: dict) -> str:
     """
-    Call GPT-4o to generate a personalized outreach message.
+    Call GPT model via configured base_url to generate a personalized outreach message.
     Retries once on API error. Returns message string ≤300 chars.
     """
     user_prompt = build_user_prompt(profile)
 
     for attempt in range(2):
         try:
-            response = openai.chat.completions.create(
-                model="gpt-4o",
+            response = _client.chat.completions.create(
+                model=config.OPENAI_MODEL,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},

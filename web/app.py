@@ -184,9 +184,12 @@ def api_campaign_suggest():
 
     try:
         import openai
-        openai.api_key = config.OPENAI_API_KEY
-        response = openai.chat.completions.create(
-            model="gpt-4o",
+        client = openai.OpenAI(
+            api_key=config.OPENAI_API_KEY,
+            base_url=config.OPENAI_BASE_URL,
+        )
+        response = client.chat.completions.create(
+            model=config.OPENAI_MODEL,
             messages=[
                 {
                     "role": "system",
