@@ -208,9 +208,13 @@ def api_campaign_suggest():
             ],
             max_tokens=400,
             temperature=0.5,
-            response_format={"type": "json_object"},
         )
-        result = _json.loads(response.choices[0].message.content)
+        raw = response.choices[0].message.content
+        # Extract JSON even if model wraps it in markdown code fences
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if not match:
+            return jsonify({"error": "AI did not return valid JSON"}), 500
+        result = _json.loads(match.group())
         return jsonify({
             "job_titles": result.get("job_titles", []),
             "industry_keywords": result.get("industry_keywords", []),
